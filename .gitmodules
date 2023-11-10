@@ -1,0 +1,3 @@
+[submodule "adc-gem5"]
+	path = adc-gem5
+	url = git@github.com:gvodanovic/adc-gem5.git
