@@ -1,0 +1,11 @@
+[cpu]
+num_cores = 1
+frequency = "4GHz"
+
+[memory]
+type = "DDR3_1600_8x8"
+size = "2GB"
+channels = 2
+ranks = 0
+cache_line_size = 64
+
