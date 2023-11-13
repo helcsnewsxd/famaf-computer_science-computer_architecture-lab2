@@ -3,9 +3,9 @@
 	t_amb:   .dword 25   
 	n_iter:  .dword 10    
 	
-	.bss 
-	x: .zero  3072        
-	x_temp: .zero  3072    
+	.bss
+	x: .zero 32768
+	x_temp: .zero 32768
 
 	.arch armv8-a
 	.text
