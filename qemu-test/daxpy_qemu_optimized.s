@@ -1,34 +1,72 @@
-	.data
-	N:       .dword 4096	// Number of elements in the vectors
+.data
+	N:       .dword 4	// Number of elements in the vectors
 	Alpha:   .dword 2      // scalar value
-	
-	.bss 
+
+	// Double values - FOR INIT
+	X_init:  .double 2, 2.5, 3, 3.5
+	Y_init:  .double 9.5, 8.5, 7.5, 6.5
+
+.bss 
 	X: .zero  32768        // vector X(4096)*8
 	Y: .zero  32768        // Vector Y(4096)*8
 	Z: .zero  32768        // Vector Y(4096)*8
 
-	.arch armv8-a
-	.text
-	.align	2
-	.global	main
-	.type	main, %function
-main:
-.LFB6:
-	.cfi_startproc
-	stp	x29, x30, [sp, -16]!
-	.cfi_def_cfa_offset 16
-	.cfi_offset 29, -16
-	.cfi_offset 30, -8
-	mov	x29, sp
-	mov	x1, 0
-	mov	x0, 0
-	bl	m5_dump_stats
+.text
+	MRS X9, CPACR_EL1			// Read EL1 Architectural Feature Access Control Register
+	MOVZ X10, 0x0030, lsl #16	        // Set BITs 20 and 21
+	ORR X9, X9, X10
+	MSR CPACR_EL1, X9			// Write EL1 Architectural Feature Access Control Register
 
 	ldr     x0, N
     	ldr     x10, =Alpha
     	ldr     x2, =X
     	ldr     x3, =Y
 	ldr     x4, =Z
+
+//---------------------- INITIALIZATION HERE ------------------------------------
+
+	// Alpha = 2
+	// X = [2, 2.5, 3, 3.5]
+	ldr     x5, =X_init
+
+	ldr d0, [x5]
+	str d0, [x2]
+
+	ldr d0, [x5, #8]
+	str d0, [x2, #8]
+
+	ldr d0, [x5, #16]
+	str d0, [x2, #16]
+
+	ldr d0, [x5, #24]
+	str d0, [x2, #24]
+
+	// Y = [9.5, 8.5, 7.5, 6.5]
+	ldr     x6, =Y_init
+
+	ldr d0, [x6]
+	str d0, [x3]
+
+	ldr d0, [x6, #8]
+	str d0, [x3, #8]
+
+	ldr d0, [x6, #16]
+	str d0, [x3, #16]
+
+	ldr d0, [x6, #24]
+	str d0, [x3, #24]
+
+	// Z = [0, 0, 0, 0]
+	ldr     x7, =Z
+
+	fsub d0, d0, d0
+	
+	str d0, [x4]
+	str d0, [x4, #8]
+	str d0, [x4, #16]
+	str d0, [x4, #24]
+
+//---------------------- END INITIALIZATION ------------------------------------
 
 //---------------------- CODE HERE ------------------------------------
 
@@ -90,17 +128,5 @@ main:
 
 //---------------------- END CODE ------------------------------------
 
-	mov 	x0, 0
-	mov 	x1, 0
-	bl	m5_dump_stats
-	mov	w0, 0
-	ldp	x29, x30, [sp], 16
-	.cfi_restore 30
-	.cfi_restore 29
-	.cfi_def_cfa_offset 0
-	ret
-	.cfi_endproc
-.LFE6:
-	.size	main, .-main
-	.ident	"GCC: (Ubuntu 9.4.0-1ubuntu1~20.04.1) 9.4.0"
-	.section	.note.GNU-stack,"",@progbits
+end:
+infloop: B infloop
