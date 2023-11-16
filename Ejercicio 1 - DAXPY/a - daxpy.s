@@ -5,7 +5,7 @@
 	.bss 
 	X: .zero  32768        // vector X(4096)*8
 	Y: .zero  32768        // Vector Y(4096)*8
-	Z: .zero  32768        // Vector Y(4096)*8
+        Z: .zero  32768        // Vector Y(4096)*8
 
 	.arch armv8-a
 	.text
@@ -32,55 +32,63 @@ main:
 
 //---------------------- CODE HERE ------------------------------------
 
-	// Convert Alpha to Double
-	ldr 	x11, [x10]
-	scvtf 	d0, x11
-
-	// Alias for registers
+	// Get register alias
 	n .req x0
 	i .req x1
 	posX .req x2
 	posY .req x3
 	posZ .req x4
+	posAlpha .req x10
+	alphaInt .req x11
 	alpha .req d0
 	valX .req d1
 	valY .req d2
 	valZ .req d3
 
+	// Get alpha and convert to double value
+	ldr alphaInt, [posAlpha]
+	scvtf alpha, alphaInt
+
 	// Principal loop
-	mov 	i, 0
-	loop:
-		// Check condition
+	mov i, 0
+	daxpy_loop:
+		// Loop condition to exit
 		cmp i, n
-		bge end_loop
+		b.ge daxpy_end_loop
 
-		// Read x, y values
-		ldr 	valX, [posX, #0]
-		ldr 	valY, [posY, #0]
+		// Loop body
+		// Get valX, valY
+		ldr valX, [posX]
+		ldr valY, [posY]
 
-		// Calculate value ==> Z[i] = alpha * X[i] + Y[i]
-		fmul 	valZ, valX, alpha
-		fadd 	valZ, valZ, valY
+		// Compute valZ = alpha*valX + valY
+		fmul valZ, alpha, valX
+		fadd valZ, valZ, valY
 
-		// Store value
-		str 	valZ, [posZ, #0]
+		// Store valZ
+		str valZ, [posZ]
 
-		// Increment i and positions
-		add 	i, i, 1
-		add 	posX, posX, 8
-		add 	posY, posY, 8
-		add 	posZ, posZ, 8
+		// Update pointers
+		add posX, posX, 8
+		add posY, posY, 8
+		add posZ, posZ, 8
 
-		b loop
+		// Update loop counter
+		add i, i, 1
 
-	end_loop:
+		// Loop back
+		b daxpy_loop
 
-	// Remove alias
+	daxpy_end_loop:
+
+	// Remove register alias
 	.unreq n
 	.unreq i
 	.unreq posX
 	.unreq posY
 	.unreq posZ
+	.unreq posAlpha
+	.unreq alphaInt
 	.unreq alpha
 	.unreq valX
 	.unreq valY
