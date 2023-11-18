@@ -26,7 +26,8 @@ main:
 
 	// Call daxpy
 	bl initRegisters
-	bl daxpy
+	// bl daxpy
+	bl optimized_daxpy
 
 	// Infinite loop
 	bl initRegisters
@@ -185,6 +186,67 @@ daxpy:
 	.unreq valX
 	.unreq valY
 	.unreq valZ
+
+	ret
+
+optimized_daxpy:
+	// Get register alias
+	n .req x0
+	posX .req x2
+	posY .req x3
+	posZ .req x4
+	posAlpha .req x10
+	alphaInt .req x11
+	alpha .req d0
+	valX .req d1
+	valY .req d2
+	valZ .req d3
+	valX2 .req d4
+	valY2 .req d5
+	valZ2 .req d6
+
+	// Get alpha and convert to double value
+	ldr alphaInt, [posAlpha]
+	scvtf alpha, alphaInt
+
+	// Principal loop
+	// We want to have only one branch instruction for iteration. Then, we will consider first the store instruction
+	b optimized_daxpy_loop_body // We go to the body of the loop
+
+	optimized_daxpy_loop_store:
+		// Store valZ
+		stp valZ, valZ2, [posZ], 16
+
+	optimized_daxpy_loop_body:
+		// We calculate the values and then (in the end of the body), check if it's ok the condition of the loop to store the values
+		// Get valX, valY
+		ldp valX, valX2, [posX], 16
+		ldp valY, valY2, [posY], 16
+
+		// Compute valZ = alpha*valX + valY
+		fmadd valZ, alpha, valX, valY
+		fmadd valZ2, alpha, valX2, valY2
+
+		// Decrease the counter
+		subs n, n, 2
+		
+		// If n >= 0, we go to the store instruction
+		b.ge optimized_daxpy_loop_store
+
+	// Remove register alias
+	.unreq n
+	.unreq posX
+	.unreq posY
+	.unreq posZ
+	.unreq posAlpha
+	.unreq alphaInt
+	.unreq alpha
+	.unreq valX
+	.unreq valY
+	.unreq valZ
+	.unreq valX2
+	.unreq valY2
+	.unreq valZ2
 
 	ret
 
