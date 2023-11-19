@@ -1,14 +1,8 @@
 .data
-	N:       .dword 3	
-	t_amb:   .dword 25   
-	n_iter:  .dword 10    
-	fc_temp: .dword 1000
-	fc_x:    .dword 2
-	fc_y:    .dword 2
+	N:       .dword 1000	// Number of elements in the vectors
 
 .bss
-	x: .zero 32768
-	x_temp: .zero 32768
+	Array: .zero  8000        // vector X(1000)*8
 
 .text
 	MRS X9, CPACR_EL1			// Read EL1 Architectural Feature Access Control Register
@@ -19,11 +13,12 @@
 // ==================== MAIN ====================
 
 main:
-	// Init memory
+	// Init memory and registers
+	bl initRandomArray
 	bl initRegisters
 
-	// Call simFisica
-	bl simFisica
+	// Call bubbleSort
+	bl bubbleSort
 
 	// Infinite loop
 	bl initRegisters
@@ -34,215 +29,119 @@ main:
 // ==================== AUXILIAR FUNCTIONS =====================
 
 initRegisters:
-	ldr     x0, N
-    ldr     x1, =x 
-    ldr     x2, =x_temp
-    ldr     x3, n_iter
-	ldr     x4, t_amb
-	ldr     x5, fc_temp
-	ldr     x6, fc_x
-	ldr     x7, fc_y
+	ldr     x2, N
+	ldr     x1, =Array
 
 	ret
 
-simFisica:
+initRandomArray:
+	// Initilize randomply the array
+	ldr     x0, =Array	    // Load array base address to x0
+	ldr     x6, N               // Load the number of elements into x2
+    	mov     x1, 1234            // Set the seed value
+	mov 	x5, 0		    // Set array counter to 0
+
+    	// LCG parameters (adjust as needed)
+    	movz    x2, 0x19, lsl 16    //1664525         // Multiplier
+	movk	x2, 0x660D, lsl 0
+    	movz    x3, 0x3C6E, lsl 16  // 1013904223      // Increment
+	movk 	x3, 0xF35F, lsl 0
+    	movz    x4, 0xFFFF, lsl 16      // Modulus (maximum value)
+        movk    x4, 0xFFFF, lsl 0      // Modulus (maximum value)
+
+	random_array:
+    	// Calculate the next pseudorandom value
+    	mul     x1, x1, x2          // x1 = x1 * multiplier
+    	add     x1, x1, x3          // x1 = x1 + increment
+    	and     x1, x1, x4          // x1 = x1 % modulus
+
+	str     x1, [x0]	    // Store the updated seed back to memory
+	add 	x0, x0, 8	    // Increment array base address 
+	add 	x5, x5, 1	    // Increment array counter 
+	cmp	x5, x6		    // Verify if process ended
+	b.lt	random_array
+
+	mov	x1, 0
+	mov	x0, 0
+
+	ret
+
+bubbleSort:
 	// Get alias
-	n .req x0
-	posX .req x1
-	xTemp .req x2
-	nIter .req x3
-	tempAmbINT .req x4
-	tempAmb .req d0
-	fcTempINT .req x5
-	fcTemp .req d1
-	fcX .req x6
-	fcY .req x7
-	nPow2 .req x8
-	posHeatSource .req x9
-	i .req x10
-	k .req x11
-	j .req x12
-	actPos .req x13
-	sum .req d2
-	valOf4 .req d3
-	auxVal .req d5
-	auxPos .req x14
+	arr .req x1
+	n .req x2
+	step .req x3
+	i .req x4
+	valArrI .req x5
+	valArrIPlus1 .req x6
+	aux .req x7
+	aux2 .req x8
+	limitIterations .req x9
 
-	// Convert ints to doubles
-	scvtf tempAmb, tempAmbINT
-	scvtf fcTemp, fcTempINT
+	// Do the bubble sort
+	mov step, 0
+	bubbleSort_step_loop:
+		// Condition to end the loop
+		cmp step, n
+		b.ge bubbleSort_step_loop_end
 
-	// Load valOf4
-	fmov valOf4, 4.0
+		// Body of the loop
+		// Set the limit of iterations
+		sub limitIterations, n, step
 
-	// Calculate nPow2
-	mul nPow2, n, n
-
-	// Calculate position of heat source
-	madd posHeatSource, fcX, n, fcY
-
-	// Init memory
-	mov i, 0
-	simFisica_init_loop:
-		cmp i, nPow2
-		bge simFisica_init_loop_end
-
-		str tempAmb, [posX, i, lsl #3]
-
-		add i, i, 1
-		b simFisica_init_loop
-
-	simFisica_init_loop_end:
-	
-	str fcTemp, [posX, posHeatSource, lsl #3]
-
-	// Simulate physics
-	// For each iteration
-	mov k, 0
-	simFisica_k_loop:
-		cmp k, nIter
-		bge simFisica_k_loop_end
-
-		// For each row
+		// Do the loop to compare array elements
 		mov i, 0
-		simFisica_i_loop:
-			cmp i, n
-			bge simFisica_i_loop_end
+		bubbleSort_compare_loop:
+			// Condition to end the loop
+			cmp i, limitIterations
+			b.ge bubbleSort_compare_loop_end
 
-			// For each column
-			mov j, 0
-			simFisica_j_loop:
-				cmp j, n
-				bge simFisica_j_loop_end
+			// Body of the loop
+			// Load arr[i] and arr[i+1]
+			ldr valArrI, [arr, i, lsl 3]
+			ldr valArrIPlus1, [arr, i, lsl 3]
 
-				// Calculate actual position
-				madd actPos, i, n, j
+			// Compare two adjacent elements
+			// If arr[i] > arr[i+1] then swap, else continue
+			cmp valArrI, valArrIPlus1
+			b.le bubbleSort_compare_loop_swap_if_end
 
-				// Principal if condition (position is not the heat source)
-				cmp actPos, posHeatSource
-				beq simFisica_j_loop_position_not_heat_source_end
-				simFisica_j_loop_position_not_heat_source:
-					// Reset sum value
-					fsub sum, sum, sum
+			bubbleSort_compare_loop_swap_if:
+				// Swap values
+				mov aux, valArrI
 
-					// Add value of the down position
-					// sum += i+1 < n ? x[(i+1)*n+j] : tempAmb; ==> sum += i+1 < n ? x[actPos+n] : tempAmb;
-					fmov auxVal, tempAmb
-					simFisica_body_first_if:
-						add auxPos, i, 1
-						cmp auxPos, n
-						bge simFisica_body_first_if_end
+				// Store arr[i+1] in arr[i]
+				str valArrIPlus1, [arr, i, lsl 3]
 
-						add auxPos, actPos, n
-						ldr auxVal, [posX, auxPos, lsl #3]
-						
-					simFisica_body_first_if_end:
+				// Store aux in arr[i+1]
+				add aux2, i, 1
+				str aux, [arr, aux2, lsl 3]
+			bubbleSort_compare_loop_swap_if_end:
 
-					fadd sum, sum, auxVal
-					
-					// Add value of the up position
-					// sum += i-1 >= 0 ? x[(i-1)*n+j] : tempAmb; ==> sum += i-1 >= 0 ? x[actPos-n] : tempAmb;
-					fmov auxVal, tempAmb
-					simFisica_body_snd_if:
-						sub auxPos, i, 1
-						cmp auxPos, 0
-						blt simFisica_body_snd_if_end
-						
-						sub auxPos, actPos, n
-						ldr auxVal, [posX, auxPos, lsl #3]
-
-					simFisica_body_snd_if_end:
-					
-					fadd sum, sum, auxVal
-
-					// Add value of the right position
-					// sum += j+1 < n ? x[i*n+(j+1)] : tempAmb; ==> sum += j+1 < n ? x[actPos+1] : tempAmb;
-					fmov auxVal, tempAmb
-					simFisica_body_third_if:
-						add auxPos, j, 1
-						cmp auxPos, n
-						bge simFisica_body_third_if_end
-
-						add auxPos, actPos, 1
-						ldr auxVal, [posX, auxPos, lsl #3]
-
-					simFisica_body_third_if_end:
-
-					fadd sum, sum, auxVal
-
-					// Add value of the left position
-					// sum += j-1 >= 0 ? x[i*n+(j-1)] : tempAmb; ==> sum += j-1 >= 0 ? x[actPos-1] : tempAmb;
-					fmov auxVal, tempAmb
-					
-					simFisica_body_fourth_if:
-						sub auxPos, j, 1
-						cmp auxPos, 0
-						blt simFisica_body_fourth_if_end
-
-						sub auxPos, actPos, 1
-						ldr auxVal, [posX, auxPos, lsl #3]
-						
-					simFisica_body_fourth_if_end:
-
-					fadd sum, sum, auxVal
-
-					// Calculate new value of the actual position and store it
-					fdiv sum, sum, valOf4
-					str sum, [xTemp, actPos, lsl #3]
-
-				simFisica_j_loop_position_not_heat_source_end:
-
-				add j, j, 1
-				b simFisica_j_loop
-			simFisica_j_loop_end:
-
+			// Increment i
 			add i, i, 1
-			b simFisica_i_loop
-		simFisica_i_loop_end:
 
-		// Copy xTemp to x for all positions except the heat source
-		mov i, 0
-		simFisica_copy_loop:
-			cmp i, nPow2
-			bge simFisica_copy_loop_end
+			// Go to the next iteration
+			b bubbleSort_compare_loop
+		bubbleSort_compare_loop_end:
 
-			cmp i, posHeatSource
-			beq simFisica_copy_loop_position_heat_source_end
-			simFisica_copy_loop_position_not_heat_source:
-				ldr auxVal, [xTemp, i, lsl #3]
-				str auxVal, [posX, i, lsl #3]
-
-			simFisica_copy_loop_position_heat_source_end:
-
-			add i, i, 1
-			b simFisica_copy_loop
-		simFisica_copy_loop_end:
-
-		add k, k, 1
-		b simFisica_k_loop
-	simFisica_k_loop_end:
+		// Increment step
+		add step, step, 1
+		
+		// Go to the next iteration
+		b bubbleSort_step_loop
+	bubbleSort_step_loop_end:
 
 	// Remove alias
+	.unreq arr
 	.unreq n
-	.unreq posX
-	.unreq xTemp
-	.unreq nIter
-	.unreq tempAmbINT
-	.unreq tempAmb
-	.unreq fcTempINT
-	.unreq fcTemp
-	.unreq fcX
-	.unreq fcY
-	.unreq nPow2
-	.unreq posHeatSource
+	.unreq step
 	.unreq i
-	.unreq k
-	.unreq j
-	.unreq actPos
-	.unreq sum
-	.unreq valOf4
-	.unreq auxVal
-	.unreq auxPos
+	.unreq valArrI
+	.unreq valArrIPlus1
+	.unreq aux
+	.unreq aux2
+	.unreq limitIterations
 
 	ret
 
