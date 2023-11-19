@@ -182,27 +182,27 @@ simFisica:
 			b simFisica_i_loop
 		simFisica_i_loop_end:
 
+		// Copy xTemp to x for all positions except the heat source
+		mov i, 0
+		simFisica_copy_loop:
+			cmp i, nPow2
+			bge simFisica_copy_loop_end
+
+			cmp i, posHeatSource
+			beq simFisica_copy_loop_position_heat_source_end
+			simFisica_copy_loop_position_not_heat_source:
+				ldr auxVal, [xTemp, i, lsl #3]
+				str auxVal, [posX, i, lsl #3]
+
+			simFisica_copy_loop_position_heat_source_end:
+
+			add i, i, 1
+			b simFisica_copy_loop
+		simFisica_copy_loop_end:
+
 		add k, k, 1
 		b simFisica_k_loop
 	simFisica_k_loop_end:
-
-	// Copy xTemp to x for all positions except the heat source
-	mov i, 0
-	simFisica_copy_loop:
-		cmp i, nPow2
-		bge simFisica_copy_loop_end
-
-		cmp i, posHeatSource
-		beq simFisica_copy_loop_position_heat_source_end
-		simFisica_copy_loop_position_not_heat_source:
-			ldr auxVal, [xTemp, i, lsl #3]
-			str auxVal, [posX, i, lsl #3]
-
-		simFisica_copy_loop_position_heat_source_end:
-
-		add i, i, 1
-		b simFisica_copy_loop
-	simFisica_copy_loop_end:
 
 	// Remove alias
 	.unreq n
