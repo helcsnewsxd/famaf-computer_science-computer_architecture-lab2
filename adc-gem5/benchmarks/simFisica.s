@@ -59,7 +59,7 @@ main:
 	valOf4 .req d3
 	auxVal .req d5
 	auxPos .req x14
-sud
+
 	// Convert ints to floats
 	scvtf tempAmb, tempAmbINT
 	scvtf fcTemp, fcTempINT
