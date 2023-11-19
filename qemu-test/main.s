@@ -77,6 +77,8 @@ bubbleSort:
 	aux .req x7
 	aux2 .req x8
 	limitIterations .req x9
+	valArrIToStore .req x10
+	valArrIPlus1ToStore .req x11
 
 	// Do the bubble sort
 	mov step, 0
@@ -106,13 +108,16 @@ bubbleSort:
 
 			// Compare two adjacent elements
 			// If arr[i] > arr[i+1] then swap, else continue
+			// We've to use ternary operators to remove the conditional branch
 			cmp valArrI, valArrIPlus1
-			b.le bubbleSort_compare_loop_swap_if_end
+			csel valArrIToStore, valArrIPlus1, valArrI, gt
+			csel valArrIPlus1ToStore, valArrI, valArrIPlus1, gt
 
-			bubbleSort_compare_loop_swap_if:
-				str valArrIPlus1, [arr, i, lsl 3]
-				str valArrI, [arr, aux2, lsl 3]
-			bubbleSort_compare_loop_swap_if_end:
+			// Store the values
+			str valArrIToStore, [arr, i, lsl 3]
+
+			add aux2, i, 1
+			str valArrIPlus1ToStore, [arr, aux2, lsl 3]
 
 			// Increment i
 			add i, i, 1
@@ -138,6 +143,8 @@ bubbleSort:
 	.unreq aux
 	.unreq aux2
 	.unreq limitIterations
+	.unreq valArrIToStore
+	.unreq valArrIPlus1ToStore
 
 	ret
 
