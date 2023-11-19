@@ -2,8 +2,28 @@
 
 using namespace std;
 
+const int N = 3;
 const int n_iter=10, t_amb=25, fc_x=1, fc_y=1;
-float fc_temp=1000,sum, x[N*N], x_tmp[N*N];
+double fc_temp=1000,sum, x[N*N], x_tmp[N*N];
+
+string double2hexstr(double x) {
+
+    union
+    {
+        long long i;
+        double    d;
+    } value;
+
+   value.d = x;
+
+   char buf[17];
+
+   snprintf (buf,sizeof(buf),"%016llx",value.i);
+   buf[16]=0; //make sure it is null terminated.
+
+   return string(buf);
+
+}
 
 int main () {
     // Esta parte inicializa la matriz, solo es necesaria para verificar el código
@@ -42,7 +62,7 @@ int main () {
         }
     
     for (int i = 0; i < N*N; ++i)
-        cout << x[i] << " ";
+        cout << double2hexstr(x[i]) << endl;
 
     return 0;
 }
