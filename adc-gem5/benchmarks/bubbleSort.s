@@ -1,8 +1,8 @@
 	.text
-	N:       .dword 1024	// Number of elements in the vectors
+	N:       .dword 1000	// Number of elements in the vectors
 	
 	.bss 
-	Array: .zero  8192        // vector X(1000)*8
+	Array: .zero  8000        // vector X(1000)*8
 
 	.arch armv8-a
 	.text
