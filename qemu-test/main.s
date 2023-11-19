@@ -1,5 +1,5 @@
 .data
-	N:       .dword 1000	// Number of elements in the vectors
+	N:       .dword 10	// Number of elements in the vectors
 
 .bss
 	Array: .zero  8000        // vector X(1000)*8
@@ -88,6 +88,7 @@ bubbleSort:
 		// Body of the loop
 		// Set the limit of iterations
 		sub limitIterations, n, step
+		sub limitIterations, limitIterations, 1
 
 		// Do the loop to compare array elements
 		mov i, 0
@@ -99,7 +100,9 @@ bubbleSort:
 			// Body of the loop
 			// Load arr[i] and arr[i+1]
 			ldr valArrI, [arr, i, lsl 3]
-			ldr valArrIPlus1, [arr, i, lsl 3]
+
+			add aux2, i, 1
+			ldr valArrIPlus1, [arr, aux2, lsl 3]
 
 			// Compare two adjacent elements
 			// If arr[i] > arr[i+1] then swap, else continue
@@ -107,15 +110,8 @@ bubbleSort:
 			b.le bubbleSort_compare_loop_swap_if_end
 
 			bubbleSort_compare_loop_swap_if:
-				// Swap values
-				mov aux, valArrI
-
-				// Store arr[i+1] in arr[i]
 				str valArrIPlus1, [arr, i, lsl 3]
-
-				// Store aux in arr[i+1]
-				add aux2, i, 1
-				str aux, [arr, aux2, lsl 3]
+				str valArrI, [arr, aux2, lsl 3]
 			bubbleSort_compare_loop_swap_if_end:
 
 			// Increment i
