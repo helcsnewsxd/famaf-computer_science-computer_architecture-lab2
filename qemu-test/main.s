@@ -1,15 +1,14 @@
 .data
-	N:       .dword 4	// Number of elements in the vectors
-	Alpha:   .dword 2      // scalar value
-
-	// Double values - FOR INIT
-	X_init:  .double 2, 2.5, 3, 3.5
-	Y_init:  .double 9.5, 8.5, 7.5, 6.5
+	N:       .dword 3	
+	t_amb:   .dword 25   
+	n_iter:  .dword 10    
+	fc_temp: .dword 1000
+	fc_x:    .dword 1
+	fc_y:    .dword 1
 
 .bss
-	X: .zero  32768        // vector X(4096)*8
-	Y: .zero  32768        // Vector Y(4096)*8
-        Z: .zero  32768        // Vector Y(4096)*8
+	x: .zero 32768
+	x_temp: .zero 32768
 
 .text
 	MRS X9, CPACR_EL1			// Read EL1 Architectural Feature Access Control Register
@@ -22,12 +21,10 @@
 main:
 	// Init memory
 	bl initRegisters
-	bl initMemory
 
-	// Call daxpy
+	// Call simFisica
 	bl initRegisters
-	// bl daxpy
-	bl optimized_daxpy
+	bl simFisica
 
 	// Infinite loop
 	bl initRegisters
@@ -39,214 +36,195 @@ main:
 
 initRegisters:
 	ldr     x0, N
-    	ldr     x10, =Alpha
-    	ldr     x2, =X
-    	ldr     x3, =Y
-	ldr     x4, =Z
+    ldr     x1, =x 
+    ldr     x2, =x_temp
+    ldr     x3, n_iter
+	ldr     x4, t_amb
+	ldr     x5, fc_temp
+	ldr     x6, fc_x
+	ldr     x7, fc_y
 
 	ret
 
-initMemory:
-	// Get register alias
+simFisica:
+	// Get alias
 	n .req x0
-	i .req x1
-	posX .req x2
-	posY .req x3
-	posInitX .req x4
-	posInitY .req x5
-	value .req d0
+	posX .req x1
+	xTemp .req x2
+	nIter .req x3
+	tempAmbINT .req x4
+	tempAmb .req d0
+	fcTempINT .req x5
+	fcTemp .req d1
+	fcX .req x6
+	fcY .req x7
+	nPow2 .req x8
+	posHeatSource .req x9
+	i .req x10
+	k .req x11
+	j .req x12
+	actPos .req x13
+	sum .req d2
+	valOf4 .req d3
+	auxVal .req d5
+	auxPos .req x14
 
-	// Init registers
-	mov n, 4
-	ldr posInitX, =X_init
-	ldr posInitY, =Y_init
+	// Convert ints to floats
+	scvtf tempAmb, tempAmbINT
+	scvtf fcTemp, fcTempINT
 
-	// init X loop
+	// Load valOf4
+	fmov valOf4, 4.0
+
+	// Calculate nPow2
+	mul nPow2, n, n
+
+	// Calculate position of heat source
+	madd posHeatSource, fcX, n, fcY
+
+	// Init memory
 	mov i, 0
-	initMemory_xloop:
-		// Loop condition
-		cmp i, n
-		b.ge initMemory_xloop_end
+	simFisica_init_loop:
+		cmp i, nPow2
+		bge simFisica_init_loop_end
 
-		// Loop body
-		// Get the init value
-		ldr value, [posInitX]
+		str tempAmb, [posX, i, lsl #3]
 
-		// Store the init value
-		str value, [posX]
-
-		// Update pointers
-		add posX, posX, 8
-		add posInitX, posInitX, 8
-
-		// Update loop counter
 		add i, i, 1
+		b simFisica_init_loop
 
-		// Loop back
-		b initMemory_xloop
+	simFisica_init_loop_end:
+	
+	str fcTemp, [posX, posHeatSource, lsl #3]
 
-	initMemory_xloop_end:
+	// Simulate physics
+	// For each iteration
+	mov k, 0
+	simFisica_k_loop:
+		cmp k, nIter
+		bge simFisica_k_loop_end
 
-	// init Y loop
+		// For each row
+		mov i, 0
+		simFisica_i_loop:
+			cmp i, n
+			bge simFisica_i_loop_end
+
+			// For each column
+			mov j, 0
+			simFisica_j_loop:
+				cmp j, n
+				bge simFisica_j_loop_end
+
+				// Calculate actual position
+				madd actPos, i, n, j
+
+				// Principal if condition (position is not the heat source)
+				cmp actPos, posHeatSource
+				beq simFisica_j_loop_position_not_heat_source_end
+				simFisica_j_loop_position_not_heat_source:
+					// Reset sum value
+					fsub sum, sum, sum
+
+					// Add value of the down position
+					// sum += i+1 < n ? x[(i+1)*n+j] : tempAmb; ==> sum += i+1 < n ? x[actPos+n] : tempAmb;
+					add auxPos, actPos, n
+					ldr auxVal, [posX, auxPos, lsl #3]
+
+					add auxPos, i, 1
+					cmp auxPos, n
+					fcsel auxVal, auxVal, tempAmb, lt
+
+					add sum, sum, auxVal
+
+					// Add value of the up position
+					// sum += i-1 >= 0 ? x[(i-1)*n+j] : tempAmb; ==> sum += i-1 >= 0 ? x[actPos-n] : tempAmb;
+					sub auxPos, actPos, n
+					ldr auxVal, [posX, auxPos, lsl #3]
+
+					cmp i, 0
+					fcsel auxVal, auxVal, tempAmb, gt
+
+					add sum, sum, auxVal
+
+					// Add value of the right position
+					// sum += j+1 < n ? x[i*n+(j+1)] : tempAmb; ==> sum += j+1 < n ? x[actPos+1] : tempAmb;
+					add auxPos, actPos, 1
+					ldr auxVal, [posX, auxPos, lsl #3]
+
+					add auxPos, j, 1
+					cmp auxPos, n
+					fcsel auxVal, auxVal, tempAmb, lt
+
+					add sum, sum, auxVal
+
+					// Add value of the left position
+					// sum += j-1 >= 0 ? x[i*n+(j-1)] : tempAmb; ==> sum += j-1 >= 0 ? x[actPos-1] : tempAmb;
+					sub auxPos, actPos, 1
+					ldr auxVal, [posX, auxPos, lsl #3]
+
+					cmp j, 0
+					fcsel auxVal, auxVal, tempAmb, gt
+
+					add sum, sum, auxVal
+
+					// Calculate new value of the actual position and store it
+					fdiv sum, sum, valOf4
+					str sum, [xTemp, actPos, lsl #3]
+
+				simFisica_j_loop_position_not_heat_source_end:
+
+				add j, j, 1
+				b simFisica_j_loop
+			simFisica_j_loop_end:
+
+			add i, i, 1
+			b simFisica_i_loop
+		simFisica_i_loop_end:
+
+		add k, k, 1
+		b simFisica_k_loop
+	simFisica_k_loop_end:
+
+	// Copy xTemp to x for all positions except the heat source
 	mov i, 0
-	initMemory_yloop:
-		// Loop condition
-		cmp i, n
-		b.ge initMemory_yloop_end
+	simFisica_copy_loop:
+		cmp i, nPow2
+		bge simFisica_copy_loop_end
 
-		// Loop body
-		// Get the init value
-		ldr value, [posInitY]
+		cmp i, posHeatSource
+		beq simFisica_copy_loop_position_heat_source_end
+		simFisica_copy_loop_position_not_heat_source:
+			ldr auxVal, [xTemp, i, lsl #3]
+			str auxVal, [posX, i, lsl #3]
 
-		// Store the init value
-		str value, [posY]
+		simFisica_copy_loop_position_heat_source_end:
 
-		// Update pointers
-		add posY, posY, 8
-		add posInitY, posInitY, 8
-
-		// Update loop counter
 		add i, i, 1
+		b simFisica_copy_loop
+	simFisica_copy_loop_end:
 
-		// Loop back
-		b initMemory_yloop
-
-	initMemory_yloop_end:
-
-	// Remove register alias
+	// Remove alias
 	.unreq n
+	.unreq posX
+	.unreq xTemp
+	.unreq nIter
+	.unreq tempAmbINT
+	.unreq tempAmb
+	.unreq fcTempINT
+	.unreq fcTemp
+	.unreq fcX
+	.unreq fcY
+	.unreq nPow2
+	.unreq posHeatSource
 	.unreq i
-	.unreq posX
-	.unreq posY
-	.unreq posInitX
-	.unreq posInitY
-	.unreq value
-
-	ret
-
-daxpy:
-	// Get register alias
-	n .req x0
-	i .req x1
-	posX .req x2
-	posY .req x3
-	posZ .req x4
-	posAlpha .req x10
-	alphaInt .req x11
-	alpha .req d0
-	valX .req d1
-	valY .req d2
-	valZ .req d3
-
-	// Get alpha and convert to double value
-	ldr alphaInt, [posAlpha]
-	scvtf alpha, alphaInt
-
-	// Principal loop
-	mov i, 0
-	daxpy_loop:
-		// Loop condition to exit
-		cmp i, n
-		b.ge daxpy_end_loop
-
-		// Loop body
-		// Get valX, valY
-		ldr valX, [posX]
-		ldr valY, [posY]
-
-		// Compute valZ = alpha*valX + valY
-		fmul valZ, alpha, valX
-		fadd valZ, valZ, valY
-
-		// Store valZ
-		str valZ, [posZ]
-
-		// Update pointers
-		add posX, posX, 8
-		add posY, posY, 8
-		add posZ, posZ, 8
-
-		// Update loop counter
-		add i, i, 1
-
-		// Loop back
-		b daxpy_loop
-
-	daxpy_end_loop:
-
-	// Remove register alias
-	.unreq n
-	.unreq i
-	.unreq posX
-	.unreq posY
-	.unreq posZ
-	.unreq posAlpha
-	.unreq alphaInt
-	.unreq alpha
-	.unreq valX
-	.unreq valY
-	.unreq valZ
-
-	ret
-
-optimized_daxpy:
-	// Get register alias
-	n .req x0
-	posX .req x2
-	posY .req x3
-	posZ .req x4
-	posAlpha .req x10
-	alphaInt .req x11
-	alpha .req d0
-	valX .req d1
-	valY .req d2
-	valZ .req d3
-	valX2 .req d4
-	valY2 .req d5
-	valZ2 .req d6
-
-	// Get alpha and convert to double value
-	ldr alphaInt, [posAlpha]
-	scvtf alpha, alphaInt
-
-	// Principal loop
-	// We want to have only one branch instruction for iteration. Then, we will consider first the store instruction
-	b optimized_daxpy_loop_body // We go to the body of the loop
-
-	optimized_daxpy_loop_store:
-		// Store valZ
-		stp valZ, valZ2, [posZ], 16
-
-	optimized_daxpy_loop_body:
-		// We calculate the values and then (in the end of the body), check if it's ok the condition of the loop to store the values
-		// Get valX, valY
-		ldp valX, valX2, [posX], 16
-		ldp valY, valY2, [posY], 16
-
-		// Compute valZ = alpha*valX + valY
-		fmadd valZ, alpha, valX, valY
-		fmadd valZ2, alpha, valX2, valY2
-
-		// Decrease the counter
-		subs n, n, 2
-		
-		// If n >= 0, we go to the store instruction
-		b.ge optimized_daxpy_loop_store
-
-	// Remove register alias
-	.unreq n
-	.unreq posX
-	.unreq posY
-	.unreq posZ
-	.unreq posAlpha
-	.unreq alphaInt
-	.unreq alpha
-	.unreq valX
-	.unreq valY
-	.unreq valZ
-	.unreq valX2
-	.unreq valY2
-	.unreq valZ2
+	.unreq k
+	.unreq j
+	.unreq actPos
+	.unreq sum
+	.unreq valOf4
+	.unreq auxVal
+	.unreq auxPos
 
 	ret
 
