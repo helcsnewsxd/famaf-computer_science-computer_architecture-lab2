@@ -38,7 +38,7 @@ main:
 
 //---------------------- CODE HERE ------------------------------------
 
-// Get alias
+	// Get alias
 	n .req x0
 	posX .req x1
 	xTemp .req x2
@@ -60,7 +60,7 @@ main:
 	auxVal .req d5
 	auxPos .req x14
 
-	// Convert ints to floats
+	// Convert ints to doubles
 	scvtf tempAmb, tempAmbINT
 	scvtf fcTemp, fcTempINT
 
@@ -119,45 +119,64 @@ main:
 
 					// Add value of the down position
 					// sum += i+1 < n ? x[(i+1)*n+j] : tempAmb; ==> sum += i+1 < n ? x[actPos+n] : tempAmb;
-					add auxPos, actPos, n
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					simFisica_body_first_if:
+						add auxPos, i, 1
+						cmp auxPos, n
+						bge simFisica_body_first_if_end
 
-					add auxPos, i, 1
-					cmp auxPos, n
-					fcsel auxVal, auxVal, tempAmb, lt
+						add auxPos, actPos, n
+						ldr auxVal, [posX, auxPos, lsl #3]
+						
+					simFisica_body_first_if_end:
 
-					add sum, sum, auxVal
-
+					fadd sum, sum, auxVal
+					
 					// Add value of the up position
 					// sum += i-1 >= 0 ? x[(i-1)*n+j] : tempAmb; ==> sum += i-1 >= 0 ? x[actPos-n] : tempAmb;
-					sub auxPos, actPos, n
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					simFisica_body_snd_if:
+						sub auxPos, i, 1
+						cmp auxPos, 0
+						blt simFisica_body_snd_if_end
+						
+						sub auxPos, actPos, n
+						ldr auxVal, [posX, auxPos, lsl #3]
 
-					cmp i, 0
-					fcsel auxVal, auxVal, tempAmb, gt
-
-					add sum, sum, auxVal
+					simFisica_body_snd_if_end:
+					
+					fadd sum, sum, auxVal
 
 					// Add value of the right position
 					// sum += j+1 < n ? x[i*n+(j+1)] : tempAmb; ==> sum += j+1 < n ? x[actPos+1] : tempAmb;
-					add auxPos, actPos, 1
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					simFisica_body_third_if:
+						add auxPos, j, 1
+						cmp auxPos, n
+						bge simFisica_body_third_if_end
 
-					add auxPos, j, 1
-					cmp auxPos, n
-					fcsel auxVal, auxVal, tempAmb, lt
+						add auxPos, actPos, 1
+						ldr auxVal, [posX, auxPos, lsl #3]
 
-					add sum, sum, auxVal
+					simFisica_body_third_if_end:
+
+					fadd sum, sum, auxVal
 
 					// Add value of the left position
 					// sum += j-1 >= 0 ? x[i*n+(j-1)] : tempAmb; ==> sum += j-1 >= 0 ? x[actPos-1] : tempAmb;
-					sub auxPos, actPos, 1
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					
+					simFisica_body_fourth_if:
+						sub auxPos, j, 1
+						cmp auxPos, 0
+						blt simFisica_body_fourth_if_end
 
-					cmp j, 0
-					fcsel auxVal, auxVal, tempAmb, gt
+						sub auxPos, actPos, 1
+						ldr auxVal, [posX, auxPos, lsl #3]
+						
+					simFisica_body_fourth_if_end:
 
-					add sum, sum, auxVal
+					fadd sum, sum, auxVal
 
 					// Calculate new value of the actual position and store it
 					fdiv sum, sum, valOf4
@@ -173,27 +192,27 @@ main:
 			b simFisica_i_loop
 		simFisica_i_loop_end:
 
+		// Copy xTemp to x for all positions except the heat source
+		mov i, 0
+		simFisica_copy_loop:
+			cmp i, nPow2
+			bge simFisica_copy_loop_end
+
+			cmp i, posHeatSource
+			beq simFisica_copy_loop_position_heat_source_end
+			simFisica_copy_loop_position_not_heat_source:
+				ldr auxVal, [xTemp, i, lsl #3]
+				str auxVal, [posX, i, lsl #3]
+
+			simFisica_copy_loop_position_heat_source_end:
+
+			add i, i, 1
+			b simFisica_copy_loop
+		simFisica_copy_loop_end:
+
 		add k, k, 1
 		b simFisica_k_loop
 	simFisica_k_loop_end:
-
-	// Copy xTemp to x for all positions except the heat source
-	mov i, 0
-	simFisica_copy_loop:
-		cmp i, nPow2
-		bge simFisica_copy_loop_end
-
-		cmp i, posHeatSource
-		beq simFisica_copy_loop_position_heat_source_end
-		simFisica_copy_loop_position_not_heat_source:
-			ldr auxVal, [xTemp, i, lsl #3]
-			str auxVal, [posX, i, lsl #3]
-
-		simFisica_copy_loop_position_heat_source_end:
-
-		add i, i, 1
-		b simFisica_copy_loop
-	simFisica_copy_loop_end:
 
 	// Remove alias
 	.unreq n

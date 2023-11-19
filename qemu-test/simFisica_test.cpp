@@ -3,7 +3,7 @@
 using namespace std;
 
 const int N = 3;
-const int n_iter=10, t_amb=25, fc_x=1, fc_y=1;
+const int n_iter=10, t_amb=25, fc_x=2, fc_y=2;
 double fc_temp=1000,sum, x[N*N], x_tmp[N*N];
 
 string double2hexstr(double x) {

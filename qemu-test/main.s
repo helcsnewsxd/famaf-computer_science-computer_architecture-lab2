@@ -3,8 +3,8 @@
 	t_amb:   .dword 25   
 	n_iter:  .dword 10    
 	fc_temp: .dword 1000
-	fc_x:    .dword 1
-	fc_y:    .dword 1
+	fc_x:    .dword 2
+	fc_y:    .dword 2
 
 .bss
 	x: .zero 32768
@@ -23,7 +23,6 @@ main:
 	bl initRegisters
 
 	// Call simFisica
-	bl initRegisters
 	bl simFisica
 
 	// Infinite loop
@@ -69,7 +68,7 @@ simFisica:
 	auxVal .req d5
 	auxPos .req x14
 
-	// Convert ints to floats
+	// Convert ints to doubles
 	scvtf tempAmb, tempAmbINT
 	scvtf fcTemp, fcTempINT
 
@@ -128,45 +127,64 @@ simFisica:
 
 					// Add value of the down position
 					// sum += i+1 < n ? x[(i+1)*n+j] : tempAmb; ==> sum += i+1 < n ? x[actPos+n] : tempAmb;
-					add auxPos, actPos, n
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					simFisica_body_first_if:
+						add auxPos, i, 1
+						cmp auxPos, n
+						bge simFisica_body_first_if_end
 
-					add auxPos, i, 1
-					cmp auxPos, n
-					fcsel auxVal, auxVal, tempAmb, lt
+						add auxPos, actPos, n
+						ldr auxVal, [posX, auxPos, lsl #3]
+						
+					simFisica_body_first_if_end:
 
-					add sum, sum, auxVal
-
+					fadd sum, sum, auxVal
+					
 					// Add value of the up position
 					// sum += i-1 >= 0 ? x[(i-1)*n+j] : tempAmb; ==> sum += i-1 >= 0 ? x[actPos-n] : tempAmb;
-					sub auxPos, actPos, n
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					simFisica_body_snd_if:
+						sub auxPos, i, 1
+						cmp auxPos, 0
+						blt simFisica_body_snd_if_end
+						
+						sub auxPos, actPos, n
+						ldr auxVal, [posX, auxPos, lsl #3]
 
-					cmp i, 0
-					fcsel auxVal, auxVal, tempAmb, gt
-
-					add sum, sum, auxVal
+					simFisica_body_snd_if_end:
+					
+					fadd sum, sum, auxVal
 
 					// Add value of the right position
 					// sum += j+1 < n ? x[i*n+(j+1)] : tempAmb; ==> sum += j+1 < n ? x[actPos+1] : tempAmb;
-					add auxPos, actPos, 1
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					simFisica_body_third_if:
+						add auxPos, j, 1
+						cmp auxPos, n
+						bge simFisica_body_third_if_end
 
-					add auxPos, j, 1
-					cmp auxPos, n
-					fcsel auxVal, auxVal, tempAmb, lt
+						add auxPos, actPos, 1
+						ldr auxVal, [posX, auxPos, lsl #3]
 
-					add sum, sum, auxVal
+					simFisica_body_third_if_end:
+
+					fadd sum, sum, auxVal
 
 					// Add value of the left position
 					// sum += j-1 >= 0 ? x[i*n+(j-1)] : tempAmb; ==> sum += j-1 >= 0 ? x[actPos-1] : tempAmb;
-					sub auxPos, actPos, 1
-					ldr auxVal, [posX, auxPos, lsl #3]
+					fmov auxVal, tempAmb
+					
+					simFisica_body_fourth_if:
+						sub auxPos, j, 1
+						cmp auxPos, 0
+						blt simFisica_body_fourth_if_end
 
-					cmp j, 0
-					fcsel auxVal, auxVal, tempAmb, gt
+						sub auxPos, actPos, 1
+						ldr auxVal, [posX, auxPos, lsl #3]
+						
+					simFisica_body_fourth_if_end:
 
-					add sum, sum, auxVal
+					fadd sum, sum, auxVal
 
 					// Calculate new value of the actual position and store it
 					fdiv sum, sum, valOf4
