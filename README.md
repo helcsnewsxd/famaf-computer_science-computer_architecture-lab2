@@ -1,7 +1,21 @@
-# Laboratorio-2_An-lisis-de-microarquitecturas
+# Arquitectura del Computador (2023): Laboratorio de Análisis de Microarquitecturas
 
-Arquitectura de Computadoras 2023 - Laboratorio 2 - Análisis de microarquitecturas
+El presente repositorio contiene todo el material referido al segundo proyecto de la asignatura "Arquitectura del Computador" (2023) de la Licenciatura en Ciencias de la Computación de la Facultad de Matemática, Astronomía, Física y Computación (FaMAF) de la Universidad Nacional de Córdoba (UNC).
 
-Para comprobar con qemu los valores en punto flotante que se ponen en la memoria, usar esta página para la conversión -> <https://babbage.cs.qc.cuny.edu/ieee-754.old/64bit.html> (recomendada por un compañero por el foro)
+## Integrantes
 
-ARCHIVO CON LAS MÉTRICAS -> <https://docs.google.com/spreadsheets/d/1YiIHhlOJogmm1vKU_q3unyct5Y7cVg_ohthr1RgK4eQ/edit?usp=sharing>
+- [Bratti, Juan](https://github.com/juanbratti)
+- [Herrador, Emanuel](https://github.com/helcsnewsxd)
+
+## Proyecto
+
+| Archivos |
+| -------- |
+| [Enunciado del proyecto](./Guia%20Laboratorio%202_Análisis%20de%20microarquitecturas.pdf) |
+| [Carpeta del 1er ejercicio](./Ejercicio%201%20-%20DAXPY/) |
+| [Informe del 1er ejercicio (DAXPY)](./Entregables/Ejercicio%201/lab2_ejercicio1_informe.pdf) |
+| [Carpeta del 2do ejercicio](./Ejercicio%202%20-%20SIMFISICA/) |
+| [Informe del 2do ejercicio (SIMFISICA)](./Entregables/Ejercicio%202/lab2_ejercicio2_informe.pdf) |
+| [Carpeta del 3er ejercicio](./Ejercicio%203%20-%20BUBBLE%20SORT/) |
+| [Informe del 3er ejercicio (BUBBLE SORT)](./Entregables/Ejercicio%203/lab2_ejercicio3_informe.pdf) |
+| [Entregable final (ZIP)](./Entregables/Lab2_BrattiJuan_HerradorEmanuelNicolas.zip) |
