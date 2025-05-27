@@ -1,3 +1,10 @@
+> [!note]
+> This repository contains experiments and analysis regarding the impact of various microarchitectural changes on the execution speed of different programs. The gem5 simulator was used to carry out these simulations.
+>
+> The project was developed as part of the Computer Architecture course at FAMAF – Universidad Nacional de Córdoba.
+>
+> The code, documentation, and comments are in Spanish, as they were written for academic purposes and submission.
+
 # Arquitectura del Computador (2023): Laboratorio de Análisis de Microarquitecturas
 
 El presente repositorio contiene todo el material referido al segundo proyecto de la asignatura "Arquitectura del Computador" (2023) de la Licenciatura en Ciencias de la Computación de la Facultad de Matemática, Astronomía, Física y Computación (FaMAF) de la Universidad Nacional de Córdoba (UNC).
